@@ -252,7 +252,7 @@ func ValidateClusterConfig(cfg *ClusterConfig) error {
 		if cfg.Karpenter != nil {
 			return errors.New("Karpenter is not supported on Outposts")
 		}
-		if cfg.SecretsEncryption != nil && cfg.SecretsEncryption.KeyARN != "" {
+		if (cfg.SecretsEncryption != nil && cfg.SecretsEncryption.KeyARN != "") || (cfg.KubernetesDataEncryption != nil && cfg.KubernetesDataEncryption.KeyARN != "") {
 			return errors.New("KMS encryption is not supported on Outposts")
 		}
 		const zonesErr = "cannot specify %s on Outposts; the AZ defaults to the Outpost AZ"
@@ -1710,17 +1710,34 @@ func ErrTooFewAvailabilityZones(azs []string) error {
 }
 
 func ValidateSecretsEncryption(clusterConfig *ClusterConfig) error {
-	if clusterConfig.SecretsEncryption == nil {
+	if clusterConfig.SecretsEncryption == nil && clusterConfig.KubernetesDataEncryption == nil {
 		return nil
 	}
 
-	if clusterConfig.SecretsEncryption.KeyARN == "" {
-		return errors.New("field secretsEncryption.keyARN is required for enabling secrets encryption")
+	if clusterConfig.SecretsEncryption != nil && clusterConfig.KubernetesDataEncryption != nil {
+		return errors.New("only one of secretsEncryption or kubernetesDataEncryption may be provided")
 	}
 
-	if _, err := arn.Parse(clusterConfig.SecretsEncryption.KeyARN); err != nil {
-		return fmt.Errorf("invalid ARN in secretsEncryption.keyARN: %q: %w", clusterConfig.SecretsEncryption.KeyARN, err)
+	if clusterConfig.SecretsEncryption != nil {
+		if clusterConfig.SecretsEncryption.KeyARN == "" {
+			return errors.New("field secretsEncryption.keyARN is required for enabling secrets encryption")
+		}
+		if _, err := arn.Parse(clusterConfig.SecretsEncryption.KeyARN); err != nil {
+			return fmt.Errorf("invalid ARN in secretsEncryption.keyARN: %q: %w", clusterConfig.SecretsEncryption.KeyARN, err)
+		}
 	}
+	if clusterConfig.KubernetesDataEncryption != nil {
+		if clusterConfig.KubernetesDataEncryption.KeyARN == "" {
+			return errors.New("field kubernetesDataEncryption.keyARN is required for enabling secrets encryption")
+		}
+		if _, err := arn.Parse(clusterConfig.KubernetesDataEncryption.KeyARN); err != nil {
+			return fmt.Errorf("invalid ARN in kubernetesDataEncryption.keyARN: %q: %w", clusterConfig.KubernetesDataEncryption.KeyARN, err)
+		}
+		if !IsSupportedKubernetesDataEncryptionVersion(clusterConfig.Metadata.Version) {
+			return fmt.Errorf("kubernetesDataEncryption is only supported for EKS version 1.28 and above")
+		}
+	}
+
 	return nil
 }
 

@@ -102,13 +102,22 @@ var _ = Describe("Outposts validation", func() {
 			expectedErr: "Karpenter is not supported on Outposts",
 		}),
 
-		Entry("KMS encryption", outpostsEntry{
+		Entry("KMS secrets encryption", outpostsEntry{
 			updateDefaultConfig: func(c *api.ClusterConfig) {
 				c.SecretsEncryption = &api.SecretsEncryption{
 					KeyARN: "arn:aws:kms:us-west-2:000000000000:key/12345-12345",
 				}
 			},
 
+			expectedErr: "KMS encryption is not supported on Outposts",
+		}),
+
+		Entry("KMS data encryption", outpostsEntry{
+			updateDefaultConfig: func(c *api.ClusterConfig) {
+				c.KubernetesDataEncryption = &api.KubernetesDataEncryption{
+					KeyARN: "arn:aws:kms:us-west-2:000000000000:key/12345-12345",
+				}
+			},
 			expectedErr: "KMS encryption is not supported on Outposts",
 		}),
 

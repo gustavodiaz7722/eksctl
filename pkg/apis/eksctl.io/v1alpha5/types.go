@@ -590,6 +590,29 @@ func IsDeprecatedVersion(version string) bool {
 	return false
 }
 
+// If a customer launches a new cluster with a K8s version 1.28+, envelope encryption of all data will be in effect without them having to do anything.
+func IsSupportedKubernetesDataEncryptionVersion(version string) bool {
+	if IsDeprecatedVersion(version) {
+		return false
+	}
+	for _, v := range UnsupportedKubernetesDataEncryptionVersions() {
+		if version == v {
+			return false
+		}
+	}
+	return true
+}
+
+func UnsupportedKubernetesDataEncryptionVersions() []string {
+	return []string{
+		Version1_23,
+		Version1_24,
+		Version1_25,
+		Version1_26,
+		Version1_27,
+	}
+}
+
 // SupportedVersions are the versions of Kubernetes that EKS supports
 func SupportedVersions() []string {
 	return []string{
@@ -1055,8 +1078,13 @@ type ClusterConfig struct {
 	// +optional
 	CloudWatch *ClusterCloudWatch `json:"cloudWatch,omitempty"`
 
+	// KMS Envelope encryption for kubernetes secrets
 	// +optional
 	SecretsEncryption *SecretsEncryption `json:"secretsEncryption,omitempty"`
+
+	// KMS Envelope encryption for all kubernetes data with a CMK
+	// +optional
+	KubernetesDataEncryption *KubernetesDataEncryption `json:"kubernetesDataEncryption,omitempty"`
 
 	Status *ClusterStatus `json:"-"`
 
@@ -2034,6 +2062,12 @@ type FargateProfileSelector struct {
 
 // SecretsEncryption defines the configuration for KMS encryption provider
 type SecretsEncryption struct {
+	// +required
+	KeyARN string `json:"keyARN,omitempty"`
+}
+
+// KubernetesDataEncryption defines the configuration for KMS encryption provider
+type KubernetesDataEncryption struct {
 	// +required
 	KeyARN string `json:"keyARN,omitempty"`
 }

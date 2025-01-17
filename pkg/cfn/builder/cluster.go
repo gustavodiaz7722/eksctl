@@ -303,7 +303,15 @@ func (c *ClusterResourceSet) addResourcesForControlPlane(subnetDetails *SubnetDe
 	}
 
 	var encryptionConfigs []gfneks.Cluster_EncryptionConfig
-	if c.spec.SecretsEncryption != nil && c.spec.SecretsEncryption.KeyARN != "" {
+	if c.spec.KubernetesDataEncryption != nil && c.spec.KubernetesDataEncryption.KeyARN != "" {
+		encryptionConfigs = []gfneks.Cluster_EncryptionConfig{
+			{
+				Provider: &gfneks.Cluster_Provider{
+					KeyArn: gfnt.NewString(c.spec.KubernetesDataEncryption.KeyARN),
+				},
+			},
+		}
+	} else if c.spec.SecretsEncryption != nil && c.spec.SecretsEncryption.KeyARN != "" {
 		encryptionConfigs = []gfneks.Cluster_EncryptionConfig{
 			{
 				Resources: gfnt.NewSlice(gfnt.NewString("secrets")),

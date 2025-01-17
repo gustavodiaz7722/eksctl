@@ -2098,15 +2098,18 @@ var _ = Describe("ClusterConfig validation", func() {
 	})
 
 	type kmsFieldCase struct {
-		secretsEncryption *api.SecretsEncryption
-		errSubstr         string
+		secretsEncryption        *api.SecretsEncryption
+		kubernetesDataEncryption *api.KubernetesDataEncryption
+		errSubstr                string
+		clusterVersion           string
 	}
 
 	DescribeTable("KMS field validation", func(k kmsFieldCase) {
 		clusterConfig := api.NewClusterConfig()
-		clusterConfig.Metadata.Version = "1.15"
+		clusterConfig.Metadata.Version = k.clusterVersion
 
 		clusterConfig.SecretsEncryption = k.secretsEncryption
+		clusterConfig.KubernetesDataEncryption = k.kubernetesDataEncryption
 		err := api.ValidateClusterConfig(clusterConfig)
 		if k.errSubstr != "" {
 			Expect(err).To(HaveOccurred())
@@ -2115,12 +2118,50 @@ var _ = Describe("ClusterConfig validation", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 	},
-		Entry("Nil secretsEncryption", kmsFieldCase{
-			secretsEncryption: nil,
+		Entry("Nil secretsEncryption and kubernetesDataEncryption", kmsFieldCase{}),
+		Entry("Non-Nil secretsEncryption and kubernetesDataEncryption", kmsFieldCase{
+			secretsEncryption:        &api.SecretsEncryption{},
+			kubernetesDataEncryption: &api.KubernetesDataEncryption{},
+			errSubstr:                "only one of secretsEncryption or kubernetesDataEncryption",
 		}),
 		Entry("Empty secretsEncryption.keyARN", kmsFieldCase{
 			secretsEncryption: &api.SecretsEncryption{},
 			errSubstr:         "secretsEncryption.keyARN is required",
+		}),
+		Entry("Empty kubernetesDataEncryption.keyARN", kmsFieldCase{
+			kubernetesDataEncryption: &api.KubernetesDataEncryption{},
+			errSubstr:                "kubernetesDataEncryption.keyARN is required",
+		}),
+		Entry("Invalid secretsEncryption.keyARN", kmsFieldCase{
+			secretsEncryption: &api.SecretsEncryption{
+				KeyARN: "invalidArn",
+			},
+			errSubstr: "invalid ARN in secretsEncryption.keyARN",
+		}),
+		Entry("Invalid kubernetesDataEncryption.keyARN", kmsFieldCase{
+			kubernetesDataEncryption: &api.KubernetesDataEncryption{
+				KeyARN: "invalidArn",
+			},
+			errSubstr: "invalid ARN in kubernetesDataEncryption.keyARN",
+		}),
+		Entry("Valid secretsEncryption.keyARN", kmsFieldCase{
+			secretsEncryption: &api.SecretsEncryption{
+				KeyARN: "arn:aws:kms:us-west-2:000000000000:key/00000000-0000-0000-0000-000000000000",
+			},
+			clusterVersion: "1.28",
+		}),
+		Entry("Valid kubernetesDataEncryption.keyARN", kmsFieldCase{
+			kubernetesDataEncryption: &api.KubernetesDataEncryption{
+				KeyARN: "arn:aws:kms:us-west-2:000000000000:key/00000000-0000-0000-0000-000000000000",
+			},
+			clusterVersion: "1.28",
+		}),
+		Entry("Unsupported cluster version for kubernetesDataEncryption", kmsFieldCase{
+			kubernetesDataEncryption: &api.KubernetesDataEncryption{
+				KeyARN: "arn:aws:kms:us-west-2:000000000000:key/00000000-0000-0000-0000-000000000000",
+			},
+			clusterVersion: "1.27",
+			errSubstr:      "kubernetesDataEncryption is only supported for EKS version 1.28 and above",
 		}),
 	)
 
@@ -2402,44 +2443,6 @@ var _ = Describe("ClusterConfig validation", func() {
 				cfg := api.NewClusterConfig()
 				cfg.AvailabilityZones = append(cfg.AvailabilityZones, "az-1")
 				Expect(api.ValidateClusterConfig(cfg)).To(MatchError("only 1 zone(s) specified [az-1], 2 are required (can be non-unique)"))
-			})
-		})
-	})
-
-	Describe("Validate SecretsEncryption", func() {
-		var cfg *api.ClusterConfig
-
-		BeforeEach(func() {
-			cfg = api.NewClusterConfig()
-		})
-
-		When("a key ARN is set", func() {
-			When("the key is valid", func() {
-				It("does not return an error", func() {
-					cfg.SecretsEncryption = &api.SecretsEncryption{
-						KeyARN: "arn:aws:kms:us-west-2:000000000000:key/12345-12345",
-					}
-					err := api.ValidateClusterConfig(cfg)
-					Expect(err).NotTo(HaveOccurred())
-				})
-			})
-
-			When("the key is invalid", func() {
-				It("returns an error", func() {
-					cfg.SecretsEncryption = &api.SecretsEncryption{
-						KeyARN: "invalid:arn",
-					}
-					err := api.ValidateClusterConfig(cfg)
-					Expect(err).To(MatchError(ContainSubstring("invalid ARN")))
-				})
-			})
-		})
-
-		When("a key ARN is not set", func() {
-			It("returns an error", func() {
-				cfg.SecretsEncryption = &api.SecretsEncryption{}
-				err := api.ValidateClusterConfig(cfg)
-				Expect(err).To(MatchError(ContainSubstring("field secretsEncryption.keyARN is required for enabling secrets encryption")))
 			})
 		})
 	})

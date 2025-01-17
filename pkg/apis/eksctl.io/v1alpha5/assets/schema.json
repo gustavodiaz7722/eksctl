@@ -477,6 +477,11 @@
             "ClusterConfig"
           ]
         },
+        "kubernetesDataEncryption": {
+          "$ref": "#/definitions/KubernetesDataEncryption",
+          "description": "KMS Envelope encryption for all kubernetes data with a CMK",
+          "x-intellij-html-description": "KMS Envelope encryption for all kubernetes data with a CMK"
+        },
         "kubernetesNetworkConfig": {
           "$ref": "#/definitions/KubernetesNetworkConfig"
         },
@@ -521,7 +526,9 @@
           "$ref": "#/definitions/RemoteNetworkConfig"
         },
         "secretsEncryption": {
-          "$ref": "#/definitions/SecretsEncryption"
+          "$ref": "#/definitions/SecretsEncryption",
+          "description": "KMS Envelope encryption for kubernetes secrets",
+          "x-intellij-html-description": "KMS Envelope encryption for kubernetes secrets"
         },
         "vpc": {
           "$ref": "#/definitions/ClusterVPC"
@@ -554,6 +561,7 @@
         "localZones",
         "cloudWatch",
         "secretsEncryption",
+        "kubernetesDataEncryption",
         "gitops",
         "karpenter",
         "outpost",
@@ -1279,6 +1287,22 @@
       "additionalProperties": false,
       "description": "provides configuration options",
       "x-intellij-html-description": "provides configuration options"
+    },
+    "KubernetesDataEncryption": {
+      "required": [
+        "keyARN"
+      ],
+      "properties": {
+        "keyARN": {
+          "type": "string"
+        }
+      },
+      "preferredOrder": [
+        "keyARN"
+      ],
+      "additionalProperties": false,
+      "description": "defines the configuration for KMS encryption provider",
+      "x-intellij-html-description": "defines the configuration for KMS encryption provider"
     },
     "KubernetesNetworkConfig": {
       "properties": {

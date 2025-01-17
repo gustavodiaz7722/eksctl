@@ -338,6 +338,18 @@ var _ = Describe("Cluster Template Builder", func() {
 			})
 		})
 
+		When("KubernetesDataEncryption is configured", func() {
+			BeforeEach(func() {
+				cfg.KubernetesDataEncryption = &api.KubernetesDataEncryption{
+					KeyARN: "key-thing",
+				}
+			})
+			It("should add the key arn to the control plane resource", func() {
+				Expect(clusterTemplate.Resources["ControlPlane"].Properties.EncryptionConfig[0].Provider.KeyARN).To(Equal("key-thing"))
+				Expect(clusterTemplate.Resources["ControlPlane"].Properties.EncryptionConfig[0].Resources).To(BeNil())
+			})
+		})
+
 		It("should add cluster stack outputs", func() {
 			Expect(clusterTemplate.Outputs).To(HaveLen(12))
 			Expect(clusterTemplate.Outputs).To(HaveKey("ARN"))
